@@ -11,7 +11,7 @@ import ThinkingIndicator from '@/components/ThinkingIndicator'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
 
 import { Message, Conversation, OllamaModel, ThinkingState, Language } from '@/types'
-import { t, detectLanguage } from '@/lib/i18n'
+import { t, detectLanguage, saveLanguage } from '@/lib/i18n'
 import {
   generateId,
   getConversations,
@@ -287,7 +287,11 @@ export default function Chat() {
             </div>
             <LanguageToggle
               language={language}
-              onToggle={() => setLanguage(l => l === 'en' ? 'zh' : 'en')}
+              onToggle={() => {
+                const newLang = language === 'en' ? 'zh' : 'en'
+                setLanguage(newLang)
+                saveLanguage(newLang)
+              }}
             />
             {currentConversationId && messages.length > 0 && (
               <button

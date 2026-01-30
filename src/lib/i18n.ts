@@ -50,9 +50,20 @@ export const translations = {
 }
 
 export function detectLanguage(): Language {
-  if (typeof navigator === 'undefined') return 'en'
+  if (typeof window === 'undefined') return 'en'
+  
+  // Check localStorage first for user preference
+  const saved = localStorage.getItem('ollama-chat-language')
+  if (saved === 'zh' || saved === 'en') return saved
+  
+  // Fall back to browser language
   const lang = navigator.language || 'en'
   return lang.startsWith('zh') ? 'zh' : 'en'
+}
+
+export function saveLanguage(lang: Language): void {
+  if (typeof window === 'undefined') return
+  localStorage.setItem('ollama-chat-language', lang)
 }
 
 export function t(key: keyof typeof translations.en, lang: Language): string {
