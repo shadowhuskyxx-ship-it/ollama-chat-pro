@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import ReactMarkdown from 'react-markdown'
 
 type Message = {
   id: string
@@ -14,8 +15,6 @@ type Conversation = {
   title: string
   messages: Message[]
   model: string
-  userId?: string
-  userAgent?: string
   createdAt: number
   updatedAt: number
 }
@@ -36,6 +35,11 @@ export default function AdminPage() {
       const res = await fetch('/api/conversations')
       const data = await res.json()
       setConversations(data)
+      // Update selected if it exists
+      if (selected) {
+        const updated = data.find((c: Conversation) => c.id === selected.id)
+        if (updated) setSelected(updated)
+      }
     } catch (e) {
       console.error(e)
     } finally {
@@ -151,11 +155,32 @@ export default function AdminPage() {
                       border: `1px solid ${msg.role === 'user' ? '#ff03' : '#0ff3'}`,
                       padding: '10px 12px',
                       fontSize: 13,
-                      whiteSpace: 'pre-wrap',
-                      lineHeight: 1.5,
+                      lineHeight: 1.6,
                       color: '#eee',
                     }}>
-                      {msg.content}
+                      {msg.role === 'user' ? (
+                        <pre style={{ whiteSpace: 'pre-wrap', margin: 0, fontFamily: 'inherit' }}>{msg.content}</pre>
+                      ) : (
+                        <div className="markdown-content">
+                          <ReactMarkdown
+                            components={{
+                              p: ({children}) => <p style={{margin: '0 0 10px 0'}}>{children}</p>,
+                              strong: ({children}) => <strong style={{color: '#0f0'}}>{children}</strong>,
+                              code: ({children}) => <code style={{background: '#222', padding: '2px 6px', borderRadius: 4, fontSize: 12}}>{children}</code>,
+                              pre: ({children}) => <pre style={{background: '#0a0a0a', padding: 10, borderRadius: 4, overflow: 'auto', margin: '10px 0'}}>{children}</pre>,
+                              ul: ({children}) => <ul style={{margin: '10px 0', paddingLeft: 20}}>{children}</ul>,
+                              ol: ({children}) => <ol style={{margin: '10px 0', paddingLeft: 20}}>{children}</ol>,
+                              li: ({children}) => <li style={{margin: '4px 0'}}>{children}</li>,
+                              h1: ({children}) => <h1 style={{fontSize: 18, margin: '15px 0 10px', color: '#0f0'}}>{children}</h1>,
+                              h2: ({children}) => <h2 style={{fontSize: 16, margin: '12px 0 8px', color: '#0f0'}}>{children}</h2>,
+                              h3: ({children}) => <h3 style={{fontSize: 14, margin: '10px 0 6px', color: '#0f0'}}>{children}</h3>,
+                              blockquote: ({children}) => <blockquote style={{borderLeft: '3px solid #0f0', paddingLeft: 10, margin: '10px 0', color: '#0a0'}}>{children}</blockquote>,
+                            }}
+                          >
+                            {msg.content}
+                          </ReactMarkdown>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}

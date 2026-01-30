@@ -15,6 +15,7 @@ import {
   deleteConversation,
   addMessage,
   formatBytes,
+  syncConversationToServer,
 } from '@/lib/storage'
 
 const suggestions = {
@@ -76,7 +77,10 @@ export default function Chat() {
 
   useEffect(() => {
     setLanguage(detectLanguage())
-    setConversations(getConversations())
+    const convs = getConversations()
+    setConversations(convs)
+    // Sync all existing conversations to server on load
+    convs.forEach(conv => syncConversationToServer(conv))
     fetchModels()
   }, [])
 
