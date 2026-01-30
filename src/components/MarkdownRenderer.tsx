@@ -20,7 +20,7 @@ export default function MarkdownRenderer({ content, uiLanguage }: MarkdownRender
           if (isInline) {
             return (
               <code
-                className="px-1.5 py-0.5 rounded-md bg-gray-200/80 dark:bg-gray-700/80 text-sm font-mono"
+                className="px-1 py-0.5 rounded bg-white/10 text-indigo-300 text-[0.85em] font-mono"
                 {...props}
               >
                 {children}
@@ -37,26 +37,26 @@ export default function MarkdownRenderer({ content, uiLanguage }: MarkdownRender
           )
         },
         p({ children }) {
-          return <p className="mb-3 last:mb-0 leading-relaxed">{children}</p>
+          return <p className="mb-2 last:mb-0">{children}</p>
         },
         ul({ children }) {
-          return <ul className="list-disc list-inside mb-3 space-y-1">{children}</ul>
+          return <ul className="list-disc list-inside mb-2 space-y-0.5 text-white/80">{children}</ul>
         },
         ol({ children }) {
-          return <ol className="list-decimal list-inside mb-3 space-y-1">{children}</ol>
+          return <ol className="list-decimal list-inside mb-2 space-y-0.5 text-white/80">{children}</ol>
         },
         h1({ children }) {
-          return <h1 className="text-2xl font-bold mb-4 mt-6">{children}</h1>
+          return <h1 className="text-lg font-semibold mb-2 mt-4 text-white">{children}</h1>
         },
         h2({ children }) {
-          return <h2 className="text-xl font-bold mb-3 mt-5">{children}</h2>
+          return <h2 className="text-base font-semibold mb-2 mt-3 text-white">{children}</h2>
         },
         h3({ children }) {
-          return <h3 className="text-lg font-semibold mb-2 mt-4">{children}</h3>
+          return <h3 className="text-sm font-semibold mb-1.5 mt-2 text-white">{children}</h3>
         },
         blockquote({ children }) {
           return (
-            <blockquote className="border-l-4 border-gray-300 pl-4 my-3 italic text-gray-600">
+            <blockquote className="border-l-2 border-indigo-500/50 pl-3 my-2 text-white/60 italic">
               {children}
             </blockquote>
           )
@@ -65,7 +65,7 @@ export default function MarkdownRenderer({ content, uiLanguage }: MarkdownRender
           return (
             <a
               href={href}
-              className="text-blue-500 hover:text-blue-600 underline"
+              className="text-indigo-400 hover:text-indigo-300 underline underline-offset-2"
               target="_blank"
               rel="noopener noreferrer"
             >

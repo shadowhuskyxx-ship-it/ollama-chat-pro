@@ -1,10 +1,9 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, Menu, Trash2 } from 'lucide-react'
+import { Send, Menu, Trash2, Plus, X } from 'lucide-react'
 import clsx from 'clsx'
 
-import Sidebar from '@/components/Sidebar'
 import ChatMessage from '@/components/ChatMessage'
 import ModelSelector from '@/components/ModelSelector'
 import LanguageToggle from '@/components/LanguageToggle'
@@ -24,7 +23,6 @@ import {
 } from '@/lib/storage'
 
 export default function Chat() {
-  // State
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
   const [input, setInput] = useState('')
@@ -40,29 +38,20 @@ export default function Chat() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
-  // Get current conversation
   const currentConversation = conversations.find(c => c.id === currentConversationId)
   const messages = currentConversation?.messages || []
 
-  // Initialize
   useEffect(() => {
-    // Detect language
     setLanguage(detectLanguage())
-
-    // Load conversations
     const saved = getConversations()
     setConversations(saved)
-
-    // Fetch models
     fetchModels()
   }, [])
 
-  // Scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, streamingContent])
 
-  // Close model selector on outside click
   useEffect(() => {
     const handleClick = () => setModelSelectorOpen(false)
     if (modelSelectorOpen) {
@@ -95,6 +84,7 @@ export default function Chat() {
     setConversations(getConversations())
     setCurrentConversationId(conv.id)
     setStreamingContent('')
+    setSidebarOpen(false)
     inputRef.current?.focus()
   }, [selectedModel, models])
 
@@ -102,9 +92,8 @@ export default function Chat() {
     setCurrentConversationId(id)
     setStreamingContent('')
     const conv = conversations.find(c => c.id === id)
-    if (conv) {
-      setSelectedModel(conv.model)
-    }
+    if (conv) setSelectedModel(conv.model)
+    setSidebarOpen(false)
   }, [conversations])
 
   const handleDeleteConversation = useCallback((id: string) => {
@@ -117,18 +106,17 @@ export default function Chat() {
   }, [currentConversationId])
 
   const handleClearChat = useCallback(() => {
-    if (currentConversationId && confirm(t('confirmDelete', language))) {
+    if (currentConversationId) {
       updateConversation(currentConversationId, { messages: [], title: 'New Chat' })
       setConversations(getConversations())
       setStreamingContent('')
     }
-  }, [currentConversationId, language])
+  }, [currentConversationId])
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault()
     if (!input.trim() || thinkingState !== 'idle') return
 
-    // Create new conversation if none selected
     let convId = currentConversationId
     if (!convId) {
       const conv = createConversation(selectedModel || models[0]?.name || 'llama2')
@@ -173,13 +161,11 @@ export default function Chat() {
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-
         const text = new TextDecoder().decode(value)
         fullContent += text
         setStreamingContent(fullContent)
       }
 
-      // Save assistant message
       const assistantMessage: Message = {
         id: generateId(),
         role: 'assistant',
@@ -213,36 +199,81 @@ export default function Chat() {
   }
 
   return (
-    <div className="flex h-screen">
-      {/* Sidebar */}
-      <Sidebar
-        conversations={conversations}
-        currentId={currentConversationId}
-        onSelect={handleSelectConversation}
-        onNew={handleNewConversation}
-        onDelete={handleDeleteConversation}
-        language={language}
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-      />
+    <div className="flex h-screen overflow-hidden">
+      {/* Sidebar Overlay */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 bg-black/60 z-40" onClick={() => setSidebarOpen(false)} />
+      )}
 
-      {/* Main content */}
+      {/* Sidebar */}
+      <div className={clsx(
+        "fixed inset-y-0 left-0 z-50 w-64 flex flex-col",
+        "bg-black/90 backdrop-blur-xl border-r border-white/5",
+        "transform transition-transform duration-200",
+        sidebarOpen ? "translate-x-0" : "-translate-x-full"
+      )}>
+        <div className="flex items-center justify-between p-4">
+          <span className="text-sm font-medium text-white/60">{t('conversations', language)}</span>
+          <button onClick={() => setSidebarOpen(false)} className="p-1 text-white/40 hover:text-white">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <button
+          onClick={handleNewConversation}
+          className="mx-3 mb-3 flex items-center gap-2 px-3 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 text-sm transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          {t('newChat', language)}
+        </button>
+
+        <div className="flex-1 overflow-auto px-3 space-y-1">
+          {conversations.map((conv) => (
+            <div
+              key={conv.id}
+              onClick={() => handleSelectConversation(conv.id)}
+              className={clsx(
+                "group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors",
+                currentConversationId === conv.id
+                  ? "bg-indigo-500/20 text-white"
+                  : "text-white/50 hover:bg-white/5 hover:text-white/80"
+              )}
+            >
+              <span className="flex-1 truncate">{conv.title}</span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleDeleteConversation(conv.id)
+                }}
+                className="opacity-0 group-hover:opacity-100 p-1 text-white/30 hover:text-red-400"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <header className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/10 backdrop-blur-md">
-          <div className="flex items-center gap-3">
+        <header className="flex items-center justify-between px-3 py-2.5 border-b border-white/5 bg-black/40 backdrop-blur-sm">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2 rounded-lg hover:bg-white/20 text-gray-700"
+              className="p-2 rounded-lg hover:bg-white/5 text-white/60"
             >
               <Menu className="w-5 h-5" />
             </button>
-            <h1 className="text-xl font-bold text-gray-800">
-              {t('title', language)}
-            </h1>
+            <button
+              onClick={handleNewConversation}
+              className="p-2 rounded-lg hover:bg-white/5 text-white/60"
+            >
+              <Plus className="w-5 h-5" />
+            </button>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <div onClick={(e) => e.stopPropagation()}>
               <ModelSelector
                 models={models}
@@ -261,10 +292,9 @@ export default function Chat() {
             {currentConversationId && messages.length > 0 && (
               <button
                 onClick={handleClearChat}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-600 transition-colors"
+                className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-red-400"
               >
                 <Trash2 className="w-4 h-4" />
-                <span className="hidden sm:inline">{t('clearChat', language)}</span>
               </button>
             )}
           </div>
@@ -272,90 +302,84 @@ export default function Chat() {
 
         {/* Messages */}
         <div className="flex-1 overflow-auto">
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-3xl mx-auto px-4">
             {messages.length === 0 && !streamingContent ? (
-              <div className="flex items-center justify-center h-full min-h-[400px]">
-                <div className="text-center p-8">
-                  <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                    <span className="text-4xl">🤖</span>
-                  </div>
-                  <h2 className="text-2xl font-bold text-gray-800 mb-2">
+              <div className="flex items-center justify-center h-full min-h-[60vh]">
+                <div className="text-center">
+                  <div className="text-4xl mb-4">⚡</div>
+                  <h2 className="text-xl font-light text-white/90 mb-1 glow-text">
                     {t('title', language)}
                   </h2>
-                  <p className="text-gray-600">
-                    {language === 'en' 
-                      ? 'Start a conversation with your local AI'
-                      : '开始与本地AI对话'}
+                  <p className="text-sm text-white/40">
+                    {language === 'en' ? 'Start a conversation' : '开始对话'}
                   </p>
                 </div>
               </div>
             ) : (
-              <>
+              <div className="py-4 space-y-4">
                 {messages.map((message) => (
                   <div key={message.id} className="message-enter">
                     <ChatMessage message={message} uiLanguage={language} />
                   </div>
                 ))}
                 {streamingContent && (
-                  <div className="message-enter flex gap-4 px-4 py-6 bg-white/30">
-                    <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white">
-                      🤖
-                    </div>
-                    <div className="flex-1 min-w-0 prose prose-gray max-w-none">
-                      <MarkdownRenderer content={streamingContent} uiLanguage={language} />
+                  <div className="message-enter">
+                    <div className="flex gap-3">
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xs flex-shrink-0">
+                        ⚡
+                      </div>
+                      <div className="flex-1 min-w-0 text-white/90 text-sm leading-relaxed">
+                        <MarkdownRenderer content={streamingContent} uiLanguage={language} />
+                      </div>
                     </div>
                   </div>
                 )}
-              </>
+                <div ref={messagesEndRef} />
+              </div>
             )}
-            <div ref={messagesEndRef} />
           </div>
         </div>
 
-        {/* Thinking indicator */}
+        {/* Thinking */}
         {thinkingState !== 'idle' && (
-          <div className="flex justify-center py-3">
+          <div className="flex justify-center py-2">
             <ThinkingIndicator state={thinkingState} language={language} />
           </div>
         )}
 
-        {/* Input area */}
-        <div className="p-4 border-t border-white/10 bg-white/10 backdrop-blur-md">
-          <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
-            <div className="flex gap-3 items-end">
-              <div className="flex-1 relative">
-                <textarea
-                  ref={inputRef}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder={t('typeMessage', language)}
-                  disabled={thinkingState !== 'idle'}
-                  rows={1}
-                  className={clsx(
-                    "w-full px-4 py-3 rounded-2xl resize-none",
-                    "bg-white/60 backdrop-blur-md border border-white/20",
-                    "focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50",
-                    "placeholder-gray-500 text-gray-800",
-                    "disabled:opacity-50 disabled:cursor-not-allowed",
-                    "transition-all"
-                  )}
-                  style={{ minHeight: '48px', maxHeight: '200px' }}
-                />
-              </div>
+        {/* Input */}
+        <div className="p-3 border-t border-white/5 bg-black/40 backdrop-blur-sm">
+          <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
+            <div className="flex gap-2 items-end">
+              <textarea
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={t('typeMessage', language)}
+                disabled={thinkingState !== 'idle'}
+                rows={1}
+                className={clsx(
+                  "flex-1 px-4 py-3 rounded-xl resize-none text-sm",
+                  "bg-white/5 border border-white/10",
+                  "focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30",
+                  "placeholder-white/30 text-white",
+                  "disabled:opacity-50 transition-all"
+                )}
+                style={{ minHeight: '44px', maxHeight: '120px' }}
+              />
               <button
                 type="submit"
                 disabled={thinkingState !== 'idle' || !input.trim()}
                 className={clsx(
-                  "flex-shrink-0 p-3 rounded-2xl",
-                  "bg-gradient-to-r from-purple-500 to-pink-500",
-                  "text-white shadow-lg",
-                  "hover:from-purple-600 hover:to-pink-600",
-                  "disabled:opacity-50 disabled:cursor-not-allowed",
+                  "p-3 rounded-xl flex-shrink-0",
+                  "bg-indigo-500 hover:bg-indigo-400",
+                  "text-white",
+                  "disabled:opacity-30 disabled:hover:bg-indigo-500",
                   "transition-all"
                 )}
               >
-                <Send className="w-5 h-5" />
+                <Send className="w-4 h-4" />
               </button>
             </div>
           </form>
