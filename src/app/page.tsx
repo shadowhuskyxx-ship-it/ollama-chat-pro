@@ -118,9 +118,62 @@ export default function Chat() {
     if (currentConversationId === id) setCurrentConversationId(null)
   }
 
-  const handleSuggestionClick = (text: string) => {
-    setInput(text)
-    inputRef.current?.focus()
+  const handleSuggestionClick = async (text: string) => {
+    // Directly send the suggestion
+    let convId = currentConversationId
+    if (!convId) {
+      const conv = createConversation(selectedModel || 'llama2')
+      convId = conv.id
+      setCurrentConversationId(convId)
+      setConversations(getConversations())
+    }
+
+    const userMessage: Message = {
+      id: generateId(),
+      role: 'user',
+      content: text,
+      timestamp: Date.now(),
+    }
+
+    addMessage(convId, userMessage)
+    setConversations(getConversations())
+    setThinkingState('thinking')
+
+    try {
+      const conv = getConversations().find(c => c.id === convId)
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: conv?.messages.map(m => ({ role: m.role, content: m.content })) || [],
+          model: selectedModel,
+          language,
+        }),
+      })
+
+      const reader = res.body?.getReader()
+      if (!reader) throw new Error('No reader')
+
+      setThinkingState('streaming')
+      let content = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        content += new TextDecoder().decode(value)
+        setStreamingContent(content)
+      }
+
+      addMessage(convId, { id: generateId(), role: 'assistant', content, timestamp: Date.now() })
+      setConversations(getConversations())
+      setStreamingContent('')
+    } catch (e) {
+      addMessage(convId, { id: generateId(), role: 'assistant', content: t('errorOccurred', language), timestamp: Date.now() })
+      setConversations(getConversations())
+    } finally {
+      setThinkingState('idle')
+      setStreamingContent('')
+    }
   }
 
   const handleSubmit = async (e?: React.FormEvent) => {
