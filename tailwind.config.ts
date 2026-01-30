@@ -8,13 +8,22 @@ const config: Config = {
   ],
   theme: {
     extend: {
-      animation: {
-        'pulse-slow': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-        'bounce-delayed-1': 'bounce 1s infinite 0.1s',
-        'bounce-delayed-2': 'bounce 1s infinite 0.2s',
+      colors: {
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
+        muted: {
+          DEFAULT: 'hsl(var(--muted))',
+          foreground: 'hsl(var(--muted-foreground))',
+        },
+        border: 'hsl(var(--border))',
+        accent: {
+          DEFAULT: 'hsl(var(--accent))',
+          foreground: 'hsl(var(--accent-foreground))',
+        },
       },
-      backdropBlur: {
-        xs: '2px',
+      borderRadius: {
+        lg: '0.75rem',
+        md: '0.5rem',
       },
     },
   },

@@ -1,19 +1,10 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Menu, Trash2, Plus, X } from 'lucide-react'
-import clsx from 'clsx'
-
-import Particles from '@/components/Particles'
-import EasterEgg from '@/components/EasterEgg'
-import WelcomeScreen from '@/components/WelcomeScreen'
-import ChatMessage from '@/components/ChatMessage'
-import ModelSelector from '@/components/ModelSelector'
-import LanguageToggle from '@/components/LanguageToggle'
-import ThinkingIndicator from '@/components/ThinkingIndicator'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Menu, Plus, Trash2, Send, ChevronDown, Globe, X, MessageSquare } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
-import SendButton from '@/components/SendButton'
-
 import { Message, Conversation, OllamaModel, ThinkingState, Language } from '@/types'
 import { t, detectLanguage, saveLanguage } from '@/lib/i18n'
 import {
@@ -23,6 +14,7 @@ import {
   updateConversation,
   deleteConversation,
   addMessage,
+  formatBytes,
 } from '@/lib/storage'
 
 export default function Chat() {
@@ -36,7 +28,7 @@ export default function Chat() {
   const [modelsLoading, setModelsLoading] = useState(true)
   const [language, setLanguage] = useState<Language>('en')
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [modelSelectorOpen, setModelSelectorOpen] = useState(false)
+  const [modelOpen, setModelOpen] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -46,8 +38,7 @@ export default function Chat() {
 
   useEffect(() => {
     setLanguage(detectLanguage())
-    const saved = getConversations()
-    setConversations(saved)
+    setConversations(getConversations())
     fetchModels()
   }, [])
 
@@ -55,71 +46,38 @@ export default function Chat() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, streamingContent])
 
-  useEffect(() => {
-    const handleClick = () => setModelSelectorOpen(false)
-    if (modelSelectorOpen) {
-      document.addEventListener('click', handleClick)
-      return () => document.removeEventListener('click', handleClick)
-    }
-  }, [modelSelectorOpen])
-
   const fetchModels = async () => {
-    setModelsLoading(true)
     try {
       const res = await fetch('/api/models')
       const data = await res.json()
       setModels(data)
-      if (data.length > 0 && !selectedModel) {
-        setSelectedModel(data[0].name)
-      }
-    } catch (error) {
-      console.error('Failed to fetch models:', error)
+      if (data.length > 0) setSelectedModel(data[0].name)
+    } catch (e) {
+      console.error(e)
     } finally {
       setModelsLoading(false)
     }
   }
 
-  const handleNewConversation = useCallback(() => {
-    if (!selectedModel && models.length > 0) {
-      setSelectedModel(models[0].name)
-    }
+  const handleNewChat = useCallback(() => {
     const welcomeMsg = t('welcomeMessage', language)
-    const conv = createConversation(selectedModel || models[0]?.name || 'llama2', welcomeMsg)
+    const conv = createConversation(selectedModel || 'llama2', welcomeMsg)
     setConversations(getConversations())
     setCurrentConversationId(conv.id)
-    setStreamingContent('')
     setSidebarOpen(false)
-    inputRef.current?.focus()
-  }, [selectedModel, models, language])
+  }, [selectedModel, language])
 
-  const handleSelectConversation = useCallback((id: string) => {
+  const handleSelectConversation = (id: string) => {
     setCurrentConversationId(id)
-    setStreamingContent('')
     const conv = conversations.find(c => c.id === id)
     if (conv) setSelectedModel(conv.model)
     setSidebarOpen(false)
-  }, [conversations])
+  }
 
-  const handleDeleteConversation = useCallback((id: string) => {
+  const handleDelete = (id: string) => {
     deleteConversation(id)
     setConversations(getConversations())
-    if (currentConversationId === id) {
-      setCurrentConversationId(null)
-      setStreamingContent('')
-    }
-  }, [currentConversationId])
-
-  const handleClearChat = useCallback(() => {
-    if (currentConversationId) {
-      updateConversation(currentConversationId, { messages: [], title: 'New Chat' })
-      setConversations(getConversations())
-      setStreamingContent('')
-    }
-  }, [currentConversationId])
-
-  const handleSuggestionClick = (text: string) => {
-    setInput(text)
-    inputRef.current?.focus()
+    if (currentConversationId === id) setCurrentConversationId(null)
   }
 
   const handleSubmit = async (e?: React.FormEvent) => {
@@ -128,8 +86,7 @@ export default function Chat() {
 
     let convId = currentConversationId
     if (!convId) {
-      // Don't add welcome message when user initiates the chat
-      const conv = createConversation(selectedModel || models[0]?.name || 'llama2')
+      const conv = createConversation(selectedModel || 'llama2')
       convId = conv.id
       setCurrentConversationId(convId)
       setConversations(getConversations())
@@ -146,177 +103,171 @@ export default function Chat() {
     setConversations(getConversations())
     setInput('')
     setThinkingState('thinking')
-    setStreamingContent('')
 
     try {
       const conv = getConversations().find(c => c.id === convId)
-      const response = await fetch('/api/chat', {
+      const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: conv?.messages.map(m => ({ role: m.role, content: m.content })) || [],
-          model: selectedModel || models[0]?.name || 'llama2',
+          model: selectedModel,
           language,
         }),
       })
 
-      if (!response.ok) throw new Error('Failed to get response')
-
-      const reader = response.body?.getReader()
+      const reader = res.body?.getReader()
       if (!reader) throw new Error('No reader')
 
       setThinkingState('streaming')
-      let fullContent = ''
+      let content = ''
 
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-        const text = new TextDecoder().decode(value)
-        fullContent += text
-        setStreamingContent(fullContent)
+        content += new TextDecoder().decode(value)
+        setStreamingContent(content)
       }
 
-      const assistantMessage: Message = {
-        id: generateId(),
-        role: 'assistant',
-        content: fullContent,
-        timestamp: Date.now(),
-      }
-      addMessage(convId, assistantMessage)
+      addMessage(convId, { id: generateId(), role: 'assistant', content, timestamp: Date.now() })
       setConversations(getConversations())
       setStreamingContent('')
-    } catch (error) {
-      console.error('Error:', error)
-      const errorMessage: Message = {
-        id: generateId(),
-        role: 'assistant',
-        content: t('errorOccurred', language),
-        timestamp: Date.now(),
-      }
-      addMessage(convId, errorMessage)
+    } catch (e) {
+      addMessage(convId, { id: generateId(), role: 'assistant', content: t('errorOccurred', language), timestamp: Date.now() })
       setConversations(getConversations())
-      setStreamingContent('')
     } finally {
       setThinkingState('idle')
-    }
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSubmit()
+      setStreamingContent('')
     }
   }
 
   return (
-    <div className="flex h-screen overflow-hidden animated-bg">
-      {/* Background effects */}
-      <Particles />
-      <EasterEgg />
-
-      {/* Sidebar Overlay */}
-      {sidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity" 
-          onClick={() => setSidebarOpen(false)} 
-        />
-      )}
-
+    <div className="h-screen flex bg-background">
       {/* Sidebar */}
-      <div className={clsx(
-        "fixed inset-y-0 left-0 z-50 w-64 flex flex-col",
-        "bg-black/90 backdrop-blur-xl border-r border-white/5",
-        "transform transition-transform duration-300 ease-out",
-        sidebarOpen ? "translate-x-0" : "-translate-x-full"
-      )}>
-        <div className="flex items-center justify-between p-4">
-          <span className="text-sm font-medium text-white/60">{t('conversations', language)}</span>
-          <button 
-            onClick={() => setSidebarOpen(false)} 
-            className="p-1 text-white/40 hover:text-white transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <button
-          onClick={handleNewConversation}
-          className="mx-3 mb-3 flex items-center gap-2 px-3 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500/20 to-purple-500/20 hover:from-indigo-500/30 hover:to-purple-500/30 border border-indigo-500/20 text-white/80 text-sm transition-all duration-300"
-        >
-          <Plus className="w-4 h-4" />
-          {t('newChat', language)}
-        </button>
-
-        <div className="flex-1 overflow-auto px-3 space-y-1">
-          {conversations.map((conv) => (
-            <div
-              key={conv.id}
-              onClick={() => handleSelectConversation(conv.id)}
-              className={clsx(
-                "group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm transition-all duration-200",
-                currentConversationId === conv.id
-                  ? "bg-indigo-500/20 text-white border border-indigo-500/30"
-                  : "text-white/50 hover:bg-white/5 hover:text-white/80"
-              )}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+              onClick={() => setSidebarOpen(false)}
+            />
+            <motion.aside
+              initial={{ x: -280 }}
+              animate={{ x: 0 }}
+              exit={{ x: -280 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed inset-y-0 left-0 w-72 bg-muted border-r border-border z-50 flex flex-col"
             >
-              <span className="flex-1 truncate">{conv.title}</span>
+              <div className="p-4 flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">{t('conversations', language)}</span>
+                <button onClick={() => setSidebarOpen(false)} className="p-1 hover:bg-border rounded">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              
               <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleDeleteConversation(conv.id)
-                }}
-                className="opacity-0 group-hover:opacity-100 p-1 text-white/30 hover:text-red-400 transition-all"
+                onClick={handleNewChat}
+                className="mx-3 mb-3 flex items-center gap-2 px-3 py-2 rounded-lg border border-border hover:bg-border/50 transition-colors text-sm"
               >
-                <Trash2 className="w-3.5 h-3.5" />
+                <Plus className="w-4 h-4" />
+                {t('newChat', language)}
               </button>
-            </div>
-          ))}
-        </div>
-      </div>
+
+              <div className="flex-1 overflow-auto px-3 space-y-1">
+                {conversations.map((conv) => (
+                  <motion.div
+                    key={conv.id}
+                    layoutId={conv.id}
+                    onClick={() => handleSelectConversation(conv.id)}
+                    className={cn(
+                      "group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors",
+                      currentConversationId === conv.id ? "bg-accent/10 text-accent" : "text-muted-foreground hover:bg-border/50"
+                    )}
+                  >
+                    <MessageSquare className="w-4 h-4 shrink-0" />
+                    <span className="flex-1 truncate">{conv.title}</span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDelete(conv.id) }}
+                      className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-400"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Main */}
-      <div className="flex-1 flex flex-col min-w-0 relative z-10">
+      <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <header className="flex items-center justify-between px-3 py-2.5 border-b border-white/5 bg-black/20 backdrop-blur-md">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="p-2 rounded-lg hover:bg-white/5 text-white/60 transition-colors"
-            >
-              <Menu className="w-5 h-5" />
+        <header className="h-12 flex items-center justify-between px-3 border-b border-border shrink-0">
+          <div className="flex items-center gap-1">
+            <button onClick={() => setSidebarOpen(true)} className="p-2 hover:bg-muted rounded-lg">
+              <Menu className="w-4 h-4" />
             </button>
-            <button
-              onClick={handleNewConversation}
-              className="p-2 rounded-lg hover:bg-white/5 text-white/60 transition-colors hover:text-indigo-400"
-            >
-              <Plus className="w-5 h-5" />
+            <button onClick={handleNewChat} className="p-2 hover:bg-muted rounded-lg">
+              <Plus className="w-4 h-4" />
             </button>
           </div>
 
           <div className="flex items-center gap-2">
-            <div onClick={(e) => e.stopPropagation()}>
-              <ModelSelector
-                models={models}
-                selectedModel={selectedModel}
-                onSelect={setSelectedModel}
-                isLoading={modelsLoading}
-                language={language}
-                isOpen={modelSelectorOpen}
-                onToggle={() => setModelSelectorOpen(!modelSelectorOpen)}
-              />
-            </div>
-            <LanguageToggle
-              language={language}
-              onToggle={() => {
-                const newLang = language === 'en' ? 'zh' : 'en'
-                setLanguage(newLang)
-                saveLanguage(newLang)
-              }}
-            />
-            {currentConversationId && messages.length > 0 && (
+            {/* Model selector */}
+            <div className="relative">
               <button
-                onClick={handleClearChat}
-                className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-red-400 transition-colors"
+                onClick={() => setModelOpen(!modelOpen)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs bg-muted hover:bg-border rounded-lg transition-colors"
+              >
+                <span className="max-w-20 truncate">{selectedModel?.split(':')[0] || '...'}</span>
+                <ChevronDown className={cn("w-3 h-3 transition-transform", modelOpen && "rotate-180")} />
+              </button>
+              
+              <AnimatePresence>
+                {modelOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setModelOpen(false)} />
+                    <motion.div
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      className="absolute right-0 top-full mt-1 w-52 bg-muted border border-border rounded-lg shadow-xl z-50 overflow-hidden"
+                    >
+                      {models.map((m) => (
+                        <button
+                          key={m.name}
+                          onClick={() => { setSelectedModel(m.name); setModelOpen(false) }}
+                          className={cn(
+                            "w-full px-3 py-2 text-left text-xs hover:bg-border/50 flex justify-between",
+                            selectedModel === m.name && "bg-accent/10 text-accent"
+                          )}
+                        >
+                          <span className="truncate">{m.name}</span>
+                          <span className="text-muted-foreground shrink-0 ml-2">{formatBytes(m.size)}</span>
+                        </button>
+                      ))}
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Language */}
+            <button
+              onClick={() => { const l = language === 'en' ? 'zh' : 'en'; setLanguage(l); saveLanguage(l) }}
+              className="p-2 hover:bg-muted rounded-lg text-xs"
+            >
+              {language === 'en' ? 'EN' : '中'}
+            </button>
+
+            {messages.length > 0 && (
+              <button
+                onClick={() => { if (currentConversationId) { updateConversation(currentConversationId, { messages: [] }); setConversations(getConversations()) }}}
+                className="p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-red-400"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -326,66 +277,112 @@ export default function Chat() {
 
         {/* Messages */}
         <div className="flex-1 overflow-auto">
-          <div className="max-w-3xl mx-auto px-4">
+          <div className="max-w-2xl mx-auto px-4 py-6">
             {messages.length === 0 && !streamingContent ? (
-              <WelcomeScreen language={language} onSuggestionClick={handleSuggestionClick} />
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex flex-col items-center justify-center h-[60vh] text-center"
+              >
+                <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center mb-4">
+                  <span className="text-2xl">⚡</span>
+                </div>
+                <h1 className="text-lg font-medium mb-1">{t('title', language)}</h1>
+                <p className="text-sm text-muted-foreground">{language === 'en' ? 'Start a conversation' : '开始对话'}</p>
+              </motion.div>
             ) : (
-              <div className="py-4 space-y-4">
-                {messages.map((message) => (
-                  <ChatMessage key={message.id} message={message} uiLanguage={language} />
-                ))}
-                {streamingContent && (
-                  <div className="message-assistant">
-                    <div className="flex gap-3">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-sm flex-shrink-0 glow">
-                        ⚡
+              <div className="space-y-6">
+                <AnimatePresence initial={false}>
+                  {messages.map((msg) => (
+                    <motion.div
+                      key={msg.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={cn("flex gap-3", msg.role === 'user' && "justify-end")}
+                    >
+                      {msg.role === 'assistant' && (
+                        <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center shrink-0 text-sm">⚡</div>
+                      )}
+                      <div className={cn(
+                        "max-w-[85%] px-4 py-3 rounded-2xl text-sm",
+                        msg.role === 'user' 
+                          ? "bg-accent text-accent-foreground rounded-br-sm" 
+                          : "bg-muted rounded-bl-sm"
+                      )}>
+                        {msg.role === 'user' ? (
+                          <p className="whitespace-pre-wrap">{msg.content}</p>
+                        ) : (
+                          <MarkdownRenderer content={msg.content} uiLanguage={language} />
+                        )}
                       </div>
-                      <div className="flex-1 min-w-0 text-white/90 text-sm leading-relaxed glass-card rounded-2xl px-4 py-3 bg-indigo-500/5 border-indigo-500/10">
-                        <MarkdownRenderer content={streamingContent} uiLanguage={language} />
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+                
+                {streamingContent && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex gap-3"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center shrink-0 text-sm">⚡</div>
+                    <div className="max-w-[85%] px-4 py-3 rounded-2xl rounded-bl-sm bg-muted text-sm">
+                      <MarkdownRenderer content={streamingContent} uiLanguage={language} />
+                    </div>
+                  </motion.div>
+                )}
+                
+                {thinkingState === 'thinking' && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex gap-3"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center shrink-0 text-sm">⚡</div>
+                    <div className="px-4 py-3 rounded-2xl rounded-bl-sm bg-muted">
+                      <div className="flex gap-1">
+                        {[0, 1, 2].map(i => (
+                          <motion.div
+                            key={i}
+                            className="w-1.5 h-1.5 bg-accent/50 rounded-full"
+                            animate={{ opacity: [0.3, 1, 0.3] }}
+                            transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
+                          />
+                        ))}
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 )}
+                
                 <div ref={messagesEndRef} />
               </div>
             )}
           </div>
         </div>
 
-        {/* Thinking */}
-        {thinkingState !== 'idle' && (
-          <div className="flex justify-center py-2">
-            <ThinkingIndicator state={thinkingState} language={language} />
-          </div>
-        )}
-
         {/* Input */}
-        <div className="p-3 border-t border-white/5 bg-black/20 backdrop-blur-md">
-          <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
-            <div className="flex gap-2 items-end">
-              <div className="flex-1 relative">
-                <textarea
-                  ref={inputRef}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder={t('typeMessage', language)}
-                  disabled={thinkingState !== 'idle'}
-                  rows={1}
-                  className={clsx(
-                    "w-full px-4 py-3 rounded-xl resize-none text-sm",
-                    "bg-white/5 border border-white/10",
-                    "focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20",
-                    "placeholder-white/30 text-white",
-                    "disabled:opacity-50 transition-all duration-300"
-                  )}
-                  style={{ minHeight: '44px', maxHeight: '120px' }}
-                />
-                {/* Shimmer effect on focus */}
-                <div className="absolute inset-0 rounded-xl pointer-events-none opacity-0 focus-within:opacity-100 shimmer" />
-              </div>
-              <SendButton disabled={thinkingState !== 'idle' || !input.trim()} />
-            </div>
+        <div className="p-3 border-t border-border shrink-0">
+          <form onSubmit={handleSubmit} className="max-w-2xl mx-auto flex gap-2">
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit() }}}
+              placeholder={t('typeMessage', language)}
+              disabled={thinkingState !== 'idle'}
+              rows={1}
+              className="flex-1 px-4 py-3 bg-muted border border-border rounded-xl text-sm resize-none focus:outline-none focus:ring-1 focus:ring-accent/50 disabled:opacity-50 placeholder:text-muted-foreground"
+              style={{ minHeight: 44, maxHeight: 120 }}
+            />
+            <motion.button
+              type="submit"
+              disabled={thinkingState !== 'idle' || !input.trim()}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="px-4 py-3 bg-accent text-accent-foreground rounded-xl disabled:opacity-30 transition-colors"
+            >
+              <Send className="w-4 h-4" />
+            </motion.button>
           </form>
         </div>
       </div>
