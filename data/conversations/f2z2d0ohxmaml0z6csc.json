@@ -1,0 +1,21 @@
+{
+  "id": "f2z2d0ohxmaml0z6csc",
+  "title": "Where am i",
+  "messages": [
+    {
+      "id": "e5sk90us7jml0z6csd",
+      "role": "user",
+      "content": "Where am i",
+      "timestamp": 1769783122237
+    },
+    {
+      "id": "23fmoxk770pml0z6q6b",
+      "role": "assistant",
+      "content": "To help you with your request, could you please share your current location?",
+      "timestamp": 1769783139587
+    }
+  ],
+  "model": "deepseek-r1:14b",
+  "createdAt": 1769783122236,
+  "updatedAt": 1769783139588
+}
