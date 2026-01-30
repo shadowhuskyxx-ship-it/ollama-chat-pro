@@ -20,7 +20,15 @@
 
 html, body {
   height: 100%;
+  height: 100dvh; /* Dynamic viewport height for mobile */
   overflow: hidden;
+}
+
+/* Fix mobile viewport */
+@supports (height: 100dvh) {
+  html, body {
+    height: 100dvh;
+  }
 }
 
 body {

@@ -259,7 +259,7 @@ export default function Chat() {
   }
 
   return (
-    <div className="h-screen flex bg-background">
+    <div className="h-[100dvh] flex bg-background overflow-hidden">
       {/* Confetti Easter Egg */}
       <AnimatePresence>
         {confetti && (
@@ -528,7 +528,7 @@ export default function Chat() {
         </div>
 
         {/* Input */}
-        <div className="p-3 border-t border-border shrink-0">
+        <div className="p-3 pb-[env(safe-area-inset-bottom,12px)] border-t border-border shrink-0">
           <form onSubmit={handleSubmit} className="max-w-2xl mx-auto flex gap-2">
             <textarea
               ref={inputRef}
@@ -546,7 +546,7 @@ export default function Chat() {
               disabled={thinkingState !== 'idle' || !input.trim()}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="px-4 py-3 bg-accent text-accent-foreground rounded-xl disabled:opacity-30 transition-colors"
+              className="px-4 py-3 bg-accent text-accent-foreground rounded-xl disabled:opacity-30 transition-colors shrink-0"
             >
               <Send className="w-4 h-4" />
             </motion.button>
