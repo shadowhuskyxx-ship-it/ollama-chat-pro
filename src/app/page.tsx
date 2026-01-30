@@ -17,6 +17,7 @@ import {
   formatBytes,
   syncConversationToServer,
 } from '@/lib/storage'
+import { needsLocation, getGeolocation } from '@/lib/location'
 
 const suggestions = {
   en: [
@@ -132,6 +133,12 @@ export default function Chat() {
       setConversations(getConversations())
     }
 
+    // Check if we need location for this query
+    let locationData: { lat: number; lon: number; city?: string } | null = null
+    if (needsLocation(text)) {
+      locationData = await getGeolocation()
+    }
+
     const userMessage: Message = {
       id: generateId(),
       role: 'user',
@@ -152,6 +159,7 @@ export default function Chat() {
           messages: conv?.messages.map(m => ({ role: m.role, content: m.content })) || [],
           model: selectedModel,
           language,
+          location: locationData,
         }),
       })
 
@@ -192,10 +200,18 @@ export default function Chat() {
       setConversations(getConversations())
     }
 
+    const userInput = input.trim()
+    
+    // Check if we need location for this query
+    let locationData: { lat: number; lon: number; city?: string } | null = null
+    if (needsLocation(userInput)) {
+      locationData = await getGeolocation()
+    }
+
     const userMessage: Message = {
       id: generateId(),
       role: 'user',
-      content: input.trim(),
+      content: userInput,
       timestamp: Date.now(),
     }
 
@@ -213,6 +229,7 @@ export default function Chat() {
           messages: conv?.messages.map(m => ({ role: m.role, content: m.content })) || [],
           model: selectedModel,
           language,
+          location: locationData,
         }),
       })
 

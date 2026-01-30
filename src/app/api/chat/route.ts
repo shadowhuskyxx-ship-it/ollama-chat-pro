@@ -12,18 +12,28 @@ function needsWebSearch(query: string): boolean {
     /\b(who is|what is|when did|where is)\b/i,
     /\b(search|look up|find out|google)\b/i,
     /\b(happening|events?|schedule)\b/i,
+    /\b(near me|nearby|around here)\b/i,
     /\b(2024|2025|2026)\b/,
   ]
   return patterns.some(p => p.test(query))
 }
 
 // Perform web search via Brave API
-async function searchWeb(query: string): Promise<string | null> {
+async function searchWeb(query: string, location?: { lat: number; lon: number; city?: string }): Promise<string | null> {
   if (!BRAVE_API_KEY) return null
   
   try {
+    // Enhance query with location if available
+    let searchQuery = query
+    if (location?.city) {
+      // Add city to location-sensitive queries
+      if (/weather|forecast|near me|nearby|local|restaurants?|shops?/i.test(query)) {
+        searchQuery = `${query} in ${location.city}`
+      }
+    }
+    
     const res = await fetch(
-      `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=5`,
+      `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(searchQuery)}&count=5`,
       {
         headers: {
           'X-Subscription-Token': BRAVE_API_KEY,
@@ -50,7 +60,7 @@ async function searchWeb(query: string): Promise<string | null> {
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, model, language } = await req.json()
+    const { messages, model, language, location } = await req.json()
 
     // Get last user message for search decision
     const lastUserMsg = [...messages].reverse().find((m: any) => m.role === 'user')?.content || ''
@@ -60,9 +70,17 @@ export async function POST(req: NextRequest) {
       ? '你是一个有帮助的AI助手。请用中文回复用户的问题，保持回答清晰、准确、有条理。'
       : 'You are a helpful AI assistant. Respond clearly and accurately to user questions.'
 
+    // Add location context if provided
+    if (location) {
+      const locationStr = location.city 
+        ? `${location.city} (${location.lat.toFixed(2)}, ${location.lon.toFixed(2)})`
+        : `${location.lat.toFixed(4)}, ${location.lon.toFixed(4)}`
+      systemPrompt += `\n\n📍 User's Location: ${locationStr}`
+    }
+
     // Add web search context if needed
     if (needsWebSearch(lastUserMsg)) {
-      const searchResults = await searchWeb(lastUserMsg)
+      const searchResults = await searchWeb(lastUserMsg, location)
       if (searchResults) {
         const dateStr = new Date().toLocaleDateString('en-US', { 
           weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 

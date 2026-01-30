@@ -1,0 +1,21 @@
+{
+  "id": "bi6wgqgkz3dml0ymkzg",
+  "title": "禾川是什么",
+  "messages": [
+    {
+      "id": "me84or1u7maml0ymkzh",
+      "role": "user",
+      "content": "禾川是什么",
+      "timestamp": 1769782199741
+    },
+    {
+      "id": "50gtv7cak19ml0ymqrm",
+      "role": "assistant",
+      "content": "禾川是一家专注于为智能机器人和工业自动化提供核心部件的高科技公司。",
+      "timestamp": 1769782207234
+    }
+  ],
+  "model": "deepseek-r1:14b",
+  "createdAt": 1769782199740,
+  "updatedAt": 1769782207234
+}

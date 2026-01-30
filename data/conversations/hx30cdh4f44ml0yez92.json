@@ -1,0 +1,33 @@
+{
+  "id": "hx30cdh4f44ml0yez92",
+  "title": "Hows weather today",
+  "messages": [
+    {
+      "id": "ldzeo6bg55qml0yez94",
+      "role": "user",
+      "content": "Hows weather today",
+      "timestamp": 1769781844984
+    },
+    {
+      "id": "ctp4boz9zqfml0yf2ux",
+      "role": "assistant",
+      "content": "Hi there! I suggest getting online to get real-time information. If you have any other questions, please don't hesitate to let me know!",
+      "timestamp": 1769781849657
+    },
+    {
+      "id": "cpry5unpvonml0ymxg4",
+      "role": "user",
+      "content": "HOWS THE WEATHER",
+      "timestamp": 1769782215892
+    },
+    {
+      "id": "l99h0x4fli9ml0ynd81",
+      "role": "assistant",
+      "content": "Based on the search results provided, here's an overview of the weather:\n\n1. **Newnan, Georgia (30263)**:\n   - The current forecast indicates \"mostly cloudy\" skies with near-steady temperatures in the mid-40s°F. Light and variable winds are expected [1][3].\n   - Overnight, it is partly cloudy during the evening followed by cloudy skies, with lows near 25°F [4].\n\nIf you're looking for more details or a different location, let me know!",
+      "timestamp": 1769782236337
+    }
+  ],
+  "model": "deepseek-r1:14b",
+  "createdAt": 1769781844982,
+  "updatedAt": 1769782236337
+}

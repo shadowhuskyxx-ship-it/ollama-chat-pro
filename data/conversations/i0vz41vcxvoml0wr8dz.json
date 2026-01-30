@@ -1,0 +1,15 @@
+{
+  "id": "i0vz41vcxvoml0wr8dz",
+  "title": "New Chat",
+  "messages": [
+    {
+      "id": "xy1yzrh1btml0wr8dz",
+      "role": "assistant",
+      "content": "Hey there! 👋 I'm your local AI buddy, powered by Ollama.\n\n**What I can do:**\n- 💬 Chat naturally in English or 中文\n- 💻 Help with code, debugging & tech stuff\n- ✍️ Write stories, emails, or creative content\n- 🧠 Explain complex topics simply\n- 🔒 100% private — I run locally on your machine!\n\n**Pro tips:**\n- Switch models anytime using the dropdown\n- Try the Konami code for a surprise 🎮\n- Your chats are saved locally\n\nSo... what's on your mind? 😊",
+      "timestamp": 1769779057463
+    }
+  ],
+  "model": "deepseek-r1:14b",
+  "createdAt": 1769779057463,
+  "updatedAt": 1769779057463
+}
