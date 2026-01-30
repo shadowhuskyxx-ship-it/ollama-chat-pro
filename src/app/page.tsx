@@ -83,13 +83,14 @@ export default function Chat() {
     if (!selectedModel && models.length > 0) {
       setSelectedModel(models[0].name)
     }
-    const conv = createConversation(selectedModel || models[0]?.name || 'llama2')
+    const welcomeMsg = t('welcomeMessage', language)
+    const conv = createConversation(selectedModel || models[0]?.name || 'llama2', welcomeMsg)
     setConversations(getConversations())
     setCurrentConversationId(conv.id)
     setStreamingContent('')
     setSidebarOpen(false)
     inputRef.current?.focus()
-  }, [selectedModel, models])
+  }, [selectedModel, models, language])
 
   const handleSelectConversation = useCallback((id: string) => {
     setCurrentConversationId(id)
@@ -127,6 +128,7 @@ export default function Chat() {
 
     let convId = currentConversationId
     if (!convId) {
+      // Don't add welcome message when user initiates the chat
       const conv = createConversation(selectedModel || models[0]?.name || 'llama2')
       convId = conv.id
       setCurrentConversationId(convId)

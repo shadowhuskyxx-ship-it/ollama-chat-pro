@@ -23,6 +23,21 @@ export const translations = {
     chinese: '中文',
     copyCode: 'Copy',
     copied: 'Copied!',
+    welcomeMessage: `Hey there! 👋 I'm your local AI buddy, powered by Ollama.
+
+**What I can do:**
+- 💬 Chat naturally in English or 中文
+- 💻 Help with code, debugging & tech stuff
+- ✍️ Write stories, emails, or creative content
+- 🧠 Explain complex topics simply
+- 🔒 100% private — I run locally on your machine!
+
+**Pro tips:**
+- Switch models anytime using the dropdown
+- Try the Konami code for a surprise 🎮
+- Your chats are saved locally
+
+So... what's on your mind? 😊`,
   },
   zh: {
     title: 'Ollama 聊天',
@@ -46,6 +61,21 @@ export const translations = {
     chinese: '中文',
     copyCode: '复制',
     copied: '已复制！',
+    welcomeMessage: `嗨！👋 我是你的本地AI助手，由Ollama驱动。
+
+**我能做什么：**
+- 💬 自然地用中文或English聊天
+- 💻 帮你写代码、调试和解决技术问题
+- ✍️ 写故事、邮件或创意内容
+- 🧠 用简单的方式解释复杂概念
+- 🔒 100%隐私安全 — 完全在本地运行！
+
+**小技巧：**
+- 随时用下拉菜单切换模型
+- 试试科乐美秘技有惊喜 🎮
+- 聊天记录自动保存在本地
+
+那么...想聊点什么？😊`,
   },
 }
 

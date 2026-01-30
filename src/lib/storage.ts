@@ -22,11 +22,23 @@ export function getConversation(id: string): Conversation | undefined {
   return conversations.find(c => c.id === id)
 }
 
-export function createConversation(model: string): Conversation {
+export function createConversation(model: string, welcomeMessage?: string): Conversation {
+  const messages: Message[] = []
+  
+  // Add welcome message if provided
+  if (welcomeMessage) {
+    messages.push({
+      id: generateId(),
+      role: 'assistant',
+      content: welcomeMessage,
+      timestamp: Date.now(),
+    })
+  }
+
   const conversation: Conversation = {
     id: generateId(),
     title: 'New Chat',
-    messages: [],
+    messages,
     model,
     createdAt: Date.now(),
     updatedAt: Date.now(),
