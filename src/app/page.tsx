@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, Plus, Trash2, Send, ChevronDown, Globe, X, MessageSquare } from 'lucide-react'
+import { Menu, Plus, Trash2, Send, ChevronDown, X, MessageSquare, Sparkles, Zap, Brain, Code, PenTool } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
 import { Message, Conversation, OllamaModel, ThinkingState, Language } from '@/types'
@@ -17,6 +17,21 @@ import {
   formatBytes,
 } from '@/lib/storage'
 
+const suggestions = {
+  en: [
+    { icon: <Zap className="w-4 h-4" />, text: 'Explain quantum computing simply' },
+    { icon: <PenTool className="w-4 h-4" />, text: 'Write a creative short story' },
+    { icon: <Code className="w-4 h-4" />, text: 'Help me debug my code' },
+    { icon: <Brain className="w-4 h-4" />, text: 'What are the latest tech trends?' },
+  ],
+  zh: [
+    { icon: <Zap className="w-4 h-4" />, text: '用简单的话解释量子计算' },
+    { icon: <PenTool className="w-4 h-4" />, text: '写一个创意小故事' },
+    { icon: <Code className="w-4 h-4" />, text: '帮我调试代码' },
+    { icon: <Brain className="w-4 h-4" />, text: '最新的科技趋势是什么？' },
+  ],
+}
+
 export default function Chat() {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
@@ -29,12 +44,35 @@ export default function Chat() {
   const [language, setLanguage] = useState<Language>('en')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [modelOpen, setModelOpen] = useState(false)
+  const [confetti, setConfetti] = useState(false)
+  const [konamiProgress, setKonamiProgress] = useState(0)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
   const currentConversation = conversations.find(c => c.id === currentConversationId)
   const messages = currentConversation?.messages || []
+
+  // Konami code easter egg
+  const konamiCode = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'KeyB', 'KeyA']
+  
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === konamiCode[konamiProgress]) {
+        const next = konamiProgress + 1
+        setKonamiProgress(next)
+        if (next === konamiCode.length) {
+          setConfetti(true)
+          setTimeout(() => setConfetti(false), 4000)
+          setKonamiProgress(0)
+        }
+      } else {
+        setKonamiProgress(0)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [konamiProgress])
 
   useEffect(() => {
     setLanguage(detectLanguage())
@@ -78,6 +116,11 @@ export default function Chat() {
     deleteConversation(id)
     setConversations(getConversations())
     if (currentConversationId === id) setCurrentConversationId(null)
+  }
+
+  const handleSuggestionClick = (text: string) => {
+    setInput(text)
+    inputRef.current?.focus()
   }
 
   const handleSubmit = async (e?: React.FormEvent) => {
@@ -143,6 +186,27 @@ export default function Chat() {
 
   return (
     <div className="h-screen flex bg-background">
+      {/* Confetti Easter Egg */}
+      <AnimatePresence>
+        {confetti && (
+          <div className="fixed inset-0 pointer-events-none z-[100] overflow-hidden">
+            {Array.from({ length: 60 }).map((_, i) => (
+              <motion.div
+                key={i}
+                initial={{ y: -20, x: Math.random() * (typeof window !== 'undefined' ? window.innerWidth : 1000), opacity: 1, rotate: 0 }}
+                animate={{ y: (typeof window !== 'undefined' ? window.innerHeight : 800) + 20, rotate: 720 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 2 + Math.random() * 2, delay: Math.random() * 0.5 }}
+                className="absolute w-3 h-3 rounded-sm"
+                style={{
+                  backgroundColor: ['#6366f1', '#8b5cf6', '#d946ef', '#f43f5e', '#22c55e', '#eab308', '#3b82f6'][Math.floor(Math.random() * 7)],
+                }}
+              />
+            ))}
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Sidebar */}
       <AnimatePresence>
         {sidebarOpen && (
@@ -282,13 +346,44 @@ export default function Chat() {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex flex-col items-center justify-center h-[60vh] text-center"
+                className="flex flex-col items-center justify-center min-h-[60vh] text-center"
               >
-                <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center mb-4">
-                  <span className="text-2xl">⚡</span>
+                {/* Logo */}
+                <motion.div 
+                  className="relative mb-6"
+                  animate={{ scale: [1, 1.05, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                >
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-accent/20 to-accent/5 flex items-center justify-center border border-accent/20">
+                    <Sparkles className="w-8 h-8 text-accent" />
+                  </div>
+                </motion.div>
+
+                <h1 className="text-xl font-medium mb-2">{t('title', language)}</h1>
+                <p className="text-sm text-muted-foreground mb-8">
+                  {language === 'en' ? 'Your private AI assistant' : '你的私人AI助手'}
+                </p>
+
+                {/* Suggestions */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-md">
+                  {suggestions[language].map((s, i) => (
+                    <motion.button
+                      key={i}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.1 }}
+                      onClick={() => handleSuggestionClick(s.text)}
+                      className="flex items-center gap-3 px-4 py-3 rounded-xl border border-border hover:bg-muted hover:border-accent/30 transition-all text-left group"
+                    >
+                      <span className="text-muted-foreground group-hover:text-accent transition-colors">{s.icon}</span>
+                      <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">{s.text}</span>
+                    </motion.button>
+                  ))}
                 </div>
-                <h1 className="text-lg font-medium mb-1">{t('title', language)}</h1>
-                <p className="text-sm text-muted-foreground">{language === 'en' ? 'Start a conversation' : '开始对话'}</p>
+
+                <p className="mt-8 text-xs text-muted-foreground/50">
+                  {language === 'en' ? '↑↑↓↓←→←→BA for a surprise 🎮' : '↑↑↓↓←→←→BA 有惊喜 🎮'}
+                </p>
               </motion.div>
             ) : (
               <div className="space-y-6">
@@ -301,13 +396,15 @@ export default function Chat() {
                       className={cn("flex gap-3", msg.role === 'user' && "justify-end")}
                     >
                       {msg.role === 'assistant' && (
-                        <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center shrink-0 text-sm">⚡</div>
+                        <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
+                          <Sparkles className="w-3.5 h-3.5 text-accent" />
+                        </div>
                       )}
                       <div className={cn(
                         "max-w-[85%] px-4 py-3 rounded-2xl text-sm",
                         msg.role === 'user' 
-                          ? "bg-accent text-accent-foreground rounded-br-sm" 
-                          : "bg-muted rounded-bl-sm"
+                          ? "bg-accent text-accent-foreground rounded-br-md" 
+                          : "bg-muted rounded-bl-md"
                       )}>
                         {msg.role === 'user' ? (
                           <p className="whitespace-pre-wrap">{msg.content}</p>
@@ -320,31 +417,27 @@ export default function Chat() {
                 </AnimatePresence>
                 
                 {streamingContent && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="flex gap-3"
-                  >
-                    <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center shrink-0 text-sm">⚡</div>
-                    <div className="max-w-[85%] px-4 py-3 rounded-2xl rounded-bl-sm bg-muted text-sm">
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3">
+                    <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
+                      <Sparkles className="w-3.5 h-3.5 text-accent" />
+                    </div>
+                    <div className="max-w-[85%] px-4 py-3 rounded-2xl rounded-bl-md bg-muted text-sm">
                       <MarkdownRenderer content={streamingContent} uiLanguage={language} />
                     </div>
                   </motion.div>
                 )}
                 
                 {thinkingState === 'thinking' && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="flex gap-3"
-                  >
-                    <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center shrink-0 text-sm">⚡</div>
-                    <div className="px-4 py-3 rounded-2xl rounded-bl-sm bg-muted">
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3">
+                    <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
+                      <Sparkles className="w-3.5 h-3.5 text-accent" />
+                    </div>
+                    <div className="px-4 py-3 rounded-2xl rounded-bl-md bg-muted">
                       <div className="flex gap-1">
                         {[0, 1, 2].map(i => (
                           <motion.div
                             key={i}
-                            className="w-1.5 h-1.5 bg-accent/50 rounded-full"
+                            className="w-1.5 h-1.5 bg-accent rounded-full"
                             animate={{ opacity: [0.3, 1, 0.3] }}
                             transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
                           />
