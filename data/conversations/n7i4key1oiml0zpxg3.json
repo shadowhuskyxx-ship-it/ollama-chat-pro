@@ -1,0 +1,51 @@
+{
+  "id": "n7i4key1oiml0zpxg3",
+  "title": "Whats clawdbot",
+  "messages": [
+    {
+      "id": "60156wg34kwml0zpxg3",
+      "role": "assistant",
+      "content": "Hey there! 👋 I'm your local AI buddy, powered by Ollama.\n\n**What I can do:**\n- 💬 Chat naturally in English or 中文\n- 💻 Help with code, debugging & tech stuff\n- ✍️ Write stories, emails, or creative content\n- 🧠 Explain complex topics simply\n- 🔒 100% private — I run locally on your machine!\n\n**Pro tips:**\n- Switch models anytime using the dropdown\n- Try the Konami code for a surprise 🎮\n- Your chats are saved locally\n\nSo... what's on your mind? 😊",
+      "timestamp": 1769784035475
+    },
+    {
+      "id": "obzti0tzneml0zq5gr",
+      "role": "user",
+      "content": "Whats clawdbot",
+      "timestamp": 1769784045867
+    },
+    {
+      "id": "j98p84feewml0zq9op",
+      "role": "assistant",
+      "content": "It seems there might be some confusion—I don’t have any specific information about \"ClawDBot.\" Could you clarify what you're referring to? If it's a typo or a different term, I’d be happy to help!",
+      "timestamp": 1769784051337
+    },
+    {
+      "id": "ec8wwa1gl7ml0zqeeg",
+      "role": "user",
+      "content": "Search online",
+      "timestamp": 1769784057448
+    },
+    {
+      "id": "yg9ekh9unaml0zqnam",
+      "role": "assistant",
+      "content": "I’m sorry, but I don’t have access to real-time or live internet searches. However, I can help you with information from the search results you provided earlier [1], [2]. If you’re looking for something specific, let me know, and I’ll do my best to assist using the available data!",
+      "timestamp": 1769784068974
+    },
+    {
+      "id": "6okyjgeidcvml0zr2nf",
+      "role": "user",
+      "content": "What is husky",
+      "timestamp": 1769784088875
+    },
+    {
+      "id": "1vgkesrijf3ml0zrgsz",
+      "role": "assistant",
+      "content": "The term \"husky\" can refer to different things depending on the context. Here are two common interpretations:\n\n### 1. **Siberian Husky (Dog Breed)**:\n   - The Siberian Husky is a medium-sized dog breed known for its endurance, strength, and striking appearance. It belongs to the Spitz type of dogs and was originally bred by the Chukchi people in northeastern Siberia for pulling sleds and herding reindeer.\n   - Key characteristics include:\n     - A double coat that provides insulation against harsh cold.\n     - Ears that are triangular and erect, helping to conserve body heat.\n     - Eyes that can be blue, brown, or a mix of both (known as \"heterochromia\").\n     - A friendly, energetic, and affectionate temperament.\n   - Siberian Huskies are popular worldwide for their beauty, intelligence, and ability to work in cold environments.\n\n   For more details, you can refer to [1].\n\n---\n\n### 2. **Husky (Vehicle)**:\n   - The term \"husky\" is also used to describe certain types of off-road vehicles or All-Terrain Vehicles (ATVs). These vehicles are often built for rugged conditions and are used in various industries, including agriculture, construction, and adventure sports.\n   - Husky vehicles are known for their durability, reliability, and ability to handle tough terrain.\n\nIf you're referring to something else by \"husky,\" feel free to clarify!",
+      "timestamp": 1769784107219
+    }
+  ],
+  "model": "deepseek-r1:14b",
+  "createdAt": 1769784035475,
+  "updatedAt": 1769784107219
+}

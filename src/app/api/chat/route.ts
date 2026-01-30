@@ -18,137 +18,136 @@ function needsWebSearch(query: string): boolean {
   return patterns.some(p => p.test(query))
 }
 
-// Scrape Google search results via headless fetch (no API key needed)
-async function scrapeGoogleSearch(query: string): Promise<string | null> {
+// Use Wikipedia API for factual queries (free, no key)
+async function searchWikipedia(query: string): Promise<string | null> {
   try {
-    const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}&hl=en`
+    const searchRes = await fetch(
+      `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&format=json&srlimit=3&origin=*`
+    )
+    if (!searchRes.ok) return null
     
-    const res = await fetch(searchUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml',
-        'Accept-Language': 'en-US,en;q=0.9',
-      },
-    })
+    const data = await searchRes.json()
+    const results = data.query?.search || []
+    
+    if (results.length === 0) return null
+    
+    return results.map((r: any, i: number) => 
+      `[${i + 1}] ${r.title}\n${r.snippet.replace(/<[^>]+>/g, '')}`
+    ).join('\n\n')
+  } catch (e) {
+    console.error('Wikipedia search error:', e)
+    return null
+  }
+}
+
+// Use Bing web search (scraping the suggestions/instant answers)
+async function searchBing(query: string): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://www.bing.com/search?q=${encodeURIComponent(query)}&format=rss`,
+      {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+        },
+      }
+    )
+    if (!res.ok) return null
+    
+    const text = await res.text()
+    
+    // Extract from RSS
+    const items: string[] = []
+    const titleRegex = /<title>([^<]+)<\/title>/gi
+    const descRegex = /<description>([^<]+)<\/description>/gi
+    
+    const titles: string[] = []
+    const descs: string[] = []
+    
+    let match
+    while ((match = titleRegex.exec(text)) !== null) {
+      const t = match[1].replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+      if (t && t !== 'Search Results' && !t.includes('Bing')) {
+        titles.push(t)
+      }
+    }
+    while ((match = descRegex.exec(text)) !== null) {
+      const d = match[1].replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/<[^>]+>/g, '')
+      if (d && d.length > 20) {
+        descs.push(d)
+      }
+    }
+    
+    for (let i = 0; i < Math.min(titles.length, descs.length, 5); i++) {
+      items.push(`[${i + 1}] ${titles[i]}\n${descs[i]}`)
+    }
+    
+    return items.length > 0 ? items.join('\n\n') : null
+  } catch (e) {
+    console.error('Bing search error:', e)
+    return null
+  }
+}
+
+// Use Google's CSE or fallback
+async function searchGoogle(query: string): Promise<string | null> {
+  try {
+    // Google Programmable Search API (free tier: 100 queries/day)
+    // If you have API key, uncomment:
+    // const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY
+    // const GOOGLE_CSE_ID = process.env.GOOGLE_CSE_ID
+    // if (GOOGLE_API_KEY && GOOGLE_CSE_ID) { ... }
+    
+    // Fallback: scrape Google search
+    const res = await fetch(
+      `https://www.google.com/search?q=${encodeURIComponent(query)}&num=5`,
+      {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html',
+          'Accept-Language': 'en-US,en;q=0.9',
+        },
+      }
+    )
     
     if (!res.ok) return null
     
     const html = await res.text()
-    
-    // Extract search result snippets using regex (simple parsing)
     const results: string[] = []
     
-    // Match result blocks - look for common patterns in Google's HTML
-    // This extracts titles and snippets from search results
-    const titleRegex = /<h3[^>]*>([^<]+)<\/h3>/gi
-    const snippetRegex = /<span[^>]*class="[^"]*"[^>]*>([^<]{50,300})<\/span>/gi
-    
-    let titleMatch
-    const titles: string[] = []
-    while ((titleMatch = titleRegex.exec(html)) !== null && titles.length < 5) {
-      const title = titleMatch[1].replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
-      if (title.length > 10 && !title.includes('...')) {
-        titles.push(title)
-      }
-    }
-    
-    // Extract snippets
+    // Look for data-snf blocks or BNeawe class (Google's obfuscated classes)
+    const snippetRegex = /class="BNeawe[^"]*"[^>]*>([^<]{30,300})</gi
     const snippets: string[] = []
-    let snippetMatch
-    while ((snippetMatch = snippetRegex.exec(html)) !== null && snippets.length < 5) {
-      const snippet = snippetMatch[1]
-        .replace(/<[^>]+>/g, '')
+    
+    let match
+    while ((match = snippetRegex.exec(html)) !== null && snippets.length < 5) {
+      const text = match[1]
         .replace(/&amp;/g, '&')
         .replace(/&quot;/g, '"')
         .replace(/&#39;/g, "'")
-        .replace(/&nbsp;/g, ' ')
         .trim()
-      if (snippet.length > 50 && !snippets.includes(snippet)) {
-        snippets.push(snippet)
+      if (text.length > 30 && !snippets.includes(text)) {
+        snippets.push(text)
       }
     }
     
-    // Combine titles and snippets
-    for (let i = 0; i < Math.min(titles.length, 5); i++) {
-      results.push(`[${i + 1}] ${titles[i]}\n${snippets[i] || 'No description available'}`)
-    }
-    
-    return results.length > 0 ? results.join('\n\n') : null
-  } catch (e) {
-    console.error('Google scrape error:', e)
-    return null
-  }
-}
-
-// Scrape DuckDuckGo (more scrape-friendly)
-async function scrapeDuckDuckGo(query: string): Promise<string | null> {
-  try {
-    // DuckDuckGo HTML version
-    const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`
-    
-    const res = await fetch(searchUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html',
-      },
+    snippets.forEach((s, i) => {
+      results.push(`[${i + 1}] ${s}`)
     })
     
-    if (!res.ok) return null
-    
-    const html = await res.text()
-    
-    // DuckDuckGo HTML has cleaner structure
-    const results: string[] = []
-    
-    // Match result links and snippets
-    const resultRegex = /<a[^>]*class="result__a"[^>]*>([^<]+)<\/a>[\s\S]*?<a[^>]*class="result__snippet"[^>]*>([^<]+)<\/a>/gi
-    
-    let match
-    let i = 1
-    while ((match = resultRegex.exec(html)) !== null && i <= 5) {
-      const title = match[1].replace(/&amp;/g, '&').replace(/&quot;/g, '"').trim()
-      const snippet = match[2].replace(/&amp;/g, '&').replace(/&quot;/g, '"').trim()
-      if (title && snippet) {
-        results.push(`[${i}] ${title}\n${snippet}`)
-        i++
-      }
-    }
-    
-    // Alternative pattern for DDG
-    if (results.length === 0) {
-      const altRegex = /<a class="result__a"[^>]*>([^<]+)<\/a>/gi
-      const snippetRegex = /<a class="result__snippet"[^>]*>([^<]+)<\/a>/gi
-      
-      const titles: string[] = []
-      const snippets: string[] = []
-      
-      let m
-      while ((m = altRegex.exec(html)) !== null && titles.length < 5) {
-        titles.push(m[1].replace(/&amp;/g, '&').trim())
-      }
-      while ((m = snippetRegex.exec(html)) !== null && snippets.length < 5) {
-        snippets.push(m[1].replace(/&amp;/g, '&').trim())
-      }
-      
-      for (let j = 0; j < Math.min(titles.length, snippets.length, 5); j++) {
-        results.push(`[${j + 1}] ${titles[j]}\n${snippets[j]}`)
-      }
-    }
-    
     return results.length > 0 ? results.join('\n\n') : null
   } catch (e) {
-    console.error('DuckDuckGo scrape error:', e)
+    console.error('Google search error:', e)
     return null
   }
 }
 
-// Perform web search - try Brave API first, then fallback to scraping
+// Perform web search - try multiple sources
 async function searchWeb(query: string, location?: { lat: number; lon: number; city?: string }): Promise<string | null> {
   // Enhance query with location if available
   let searchQuery = query
   if (location?.city) {
     if (/weather|forecast|near me|nearby|local|restaurants?|shops?/i.test(query)) {
-      searchQuery = `${query} in ${location.city}`
+      searchQuery = `${query} ${location.city}`
     }
   }
   
@@ -181,14 +180,32 @@ async function searchWeb(query: string, location?: { lat: number; lon: number; c
     }
   }
   
-  // Fallback to DuckDuckGo scraping
-  console.log('[Search] Falling back to DuckDuckGo scrape')
-  const ddgResults = await scrapeDuckDuckGo(searchQuery)
-  if (ddgResults) return ddgResults
+  // Try Wikipedia for factual queries
+  console.log('[Search] Trying Wikipedia')
+  const wikiResults = await searchWikipedia(searchQuery)
+  if (wikiResults) {
+    console.log('[Search] Got Wikipedia results')
+    return wikiResults
+  }
   
-  // Last resort: Google scraping
-  console.log('[Search] Falling back to Google scrape')
-  return await scrapeGoogleSearch(searchQuery)
+  // Try Google scraping
+  console.log('[Search] Trying Google scrape')
+  const googleResults = await searchGoogle(searchQuery)
+  if (googleResults) {
+    console.log('[Search] Got Google results')
+    return googleResults
+  }
+  
+  // Try Bing RSS
+  console.log('[Search] Trying Bing RSS')
+  const bingResults = await searchBing(searchQuery)
+  if (bingResults) {
+    console.log('[Search] Got Bing results')
+    return bingResults
+  }
+  
+  console.log('[Search] No results from any source')
+  return null
 }
 
 export async function POST(req: NextRequest) {
@@ -213,12 +230,19 @@ export async function POST(req: NextRequest) {
 
     // Add web search context if needed
     if (needsWebSearch(lastUserMsg)) {
+      console.log('[Chat] Query needs web search:', lastUserMsg)
       const searchResults = await searchWeb(lastUserMsg, location)
       if (searchResults) {
         const dateStr = new Date().toLocaleDateString('en-US', { 
           weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
         })
         systemPrompt += `\n\n📅 Today's Date: ${dateStr}\n\n🔍 WEB SEARCH RESULTS:\n${searchResults}\n\nUse the above search results to provide accurate, up-to-date information. Cite sources when relevant using [1], [2], etc.`
+      } else {
+        // No search results - add date context at least
+        const dateStr = new Date().toLocaleDateString('en-US', { 
+          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+        })
+        systemPrompt += `\n\n📅 Today's Date: ${dateStr}\n\nNote: Web search was attempted but no results were found. Answer based on your training data, and note if information might be outdated.`
       }
     }
 
