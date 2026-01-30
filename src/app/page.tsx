@@ -1,21 +1,24 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, Menu, Trash2, Plus, X } from 'lucide-react'
+import { Menu, Trash2, Plus, X } from 'lucide-react'
 import clsx from 'clsx'
 
+import Particles from '@/components/Particles'
+import EasterEgg from '@/components/EasterEgg'
+import WelcomeScreen from '@/components/WelcomeScreen'
 import ChatMessage from '@/components/ChatMessage'
 import ModelSelector from '@/components/ModelSelector'
 import LanguageToggle from '@/components/LanguageToggle'
 import ThinkingIndicator from '@/components/ThinkingIndicator'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
+import SendButton from '@/components/SendButton'
 
 import { Message, Conversation, OllamaModel, ThinkingState, Language } from '@/types'
 import { t, detectLanguage, saveLanguage } from '@/lib/i18n'
 import {
   generateId,
   getConversations,
-  saveConversations,
   createConversation,
   updateConversation,
   deleteConversation,
@@ -113,6 +116,11 @@ export default function Chat() {
     }
   }, [currentConversationId])
 
+  const handleSuggestionClick = (text: string) => {
+    setInput(text)
+    inputRef.current?.focus()
+  }
+
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault()
     if (!input.trim() || thinkingState !== 'idle') return
@@ -199,29 +207,39 @@ export default function Chat() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden animated-bg">
+      {/* Background effects */}
+      <Particles />
+      <EasterEgg />
+
       {/* Sidebar Overlay */}
       {sidebarOpen && (
-        <div className="fixed inset-0 bg-black/60 z-40" onClick={() => setSidebarOpen(false)} />
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity" 
+          onClick={() => setSidebarOpen(false)} 
+        />
       )}
 
       {/* Sidebar */}
       <div className={clsx(
         "fixed inset-y-0 left-0 z-50 w-64 flex flex-col",
         "bg-black/90 backdrop-blur-xl border-r border-white/5",
-        "transform transition-transform duration-200",
+        "transform transition-transform duration-300 ease-out",
         sidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="flex items-center justify-between p-4">
           <span className="text-sm font-medium text-white/60">{t('conversations', language)}</span>
-          <button onClick={() => setSidebarOpen(false)} className="p-1 text-white/40 hover:text-white">
+          <button 
+            onClick={() => setSidebarOpen(false)} 
+            className="p-1 text-white/40 hover:text-white transition-colors"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <button
           onClick={handleNewConversation}
-          className="mx-3 mb-3 flex items-center gap-2 px-3 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 text-sm transition-colors"
+          className="mx-3 mb-3 flex items-center gap-2 px-3 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500/20 to-purple-500/20 hover:from-indigo-500/30 hover:to-purple-500/30 border border-indigo-500/20 text-white/80 text-sm transition-all duration-300"
         >
           <Plus className="w-4 h-4" />
           {t('newChat', language)}
@@ -233,9 +251,9 @@ export default function Chat() {
               key={conv.id}
               onClick={() => handleSelectConversation(conv.id)}
               className={clsx(
-                "group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors",
+                "group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm transition-all duration-200",
                 currentConversationId === conv.id
-                  ? "bg-indigo-500/20 text-white"
+                  ? "bg-indigo-500/20 text-white border border-indigo-500/30"
                   : "text-white/50 hover:bg-white/5 hover:text-white/80"
               )}
             >
@@ -245,7 +263,7 @@ export default function Chat() {
                   e.stopPropagation()
                   handleDeleteConversation(conv.id)
                 }}
-                className="opacity-0 group-hover:opacity-100 p-1 text-white/30 hover:text-red-400"
+                className="opacity-0 group-hover:opacity-100 p-1 text-white/30 hover:text-red-400 transition-all"
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
@@ -255,19 +273,19 @@ export default function Chat() {
       </div>
 
       {/* Main */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 relative z-10">
         {/* Header */}
-        <header className="flex items-center justify-between px-3 py-2.5 border-b border-white/5 bg-black/40 backdrop-blur-sm">
+        <header className="flex items-center justify-between px-3 py-2.5 border-b border-white/5 bg-black/20 backdrop-blur-md">
           <div className="flex items-center gap-2">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="p-2 rounded-lg hover:bg-white/5 text-white/60"
+              className="p-2 rounded-lg hover:bg-white/5 text-white/60 transition-colors"
             >
               <Menu className="w-5 h-5" />
             </button>
             <button
               onClick={handleNewConversation}
-              className="p-2 rounded-lg hover:bg-white/5 text-white/60"
+              className="p-2 rounded-lg hover:bg-white/5 text-white/60 transition-colors hover:text-indigo-400"
             >
               <Plus className="w-5 h-5" />
             </button>
@@ -296,7 +314,7 @@ export default function Chat() {
             {currentConversationId && messages.length > 0 && (
               <button
                 onClick={handleClearChat}
-                className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-red-400"
+                className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-red-400 transition-colors"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -308,31 +326,19 @@ export default function Chat() {
         <div className="flex-1 overflow-auto">
           <div className="max-w-3xl mx-auto px-4">
             {messages.length === 0 && !streamingContent ? (
-              <div className="flex items-center justify-center h-full min-h-[60vh]">
-                <div className="text-center">
-                  <div className="text-4xl mb-4">⚡</div>
-                  <h2 className="text-xl font-light text-white/90 mb-1 glow-text">
-                    {t('title', language)}
-                  </h2>
-                  <p className="text-sm text-white/40">
-                    {language === 'en' ? 'Start a conversation' : '开始对话'}
-                  </p>
-                </div>
-              </div>
+              <WelcomeScreen language={language} onSuggestionClick={handleSuggestionClick} />
             ) : (
               <div className="py-4 space-y-4">
                 {messages.map((message) => (
-                  <div key={message.id} className="message-enter">
-                    <ChatMessage message={message} uiLanguage={language} />
-                  </div>
+                  <ChatMessage key={message.id} message={message} uiLanguage={language} />
                 ))}
                 {streamingContent && (
-                  <div className="message-enter">
+                  <div className="message-assistant">
                     <div className="flex gap-3">
-                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xs flex-shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-sm flex-shrink-0 glow">
                         ⚡
                       </div>
-                      <div className="flex-1 min-w-0 text-white/90 text-sm leading-relaxed">
+                      <div className="flex-1 min-w-0 text-white/90 text-sm leading-relaxed glass-card rounded-2xl px-4 py-3 bg-indigo-500/5 border-indigo-500/10">
                         <MarkdownRenderer content={streamingContent} uiLanguage={language} />
                       </div>
                     </div>
@@ -352,39 +358,31 @@ export default function Chat() {
         )}
 
         {/* Input */}
-        <div className="p-3 border-t border-white/5 bg-black/40 backdrop-blur-sm">
+        <div className="p-3 border-t border-white/5 bg-black/20 backdrop-blur-md">
           <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
             <div className="flex gap-2 items-end">
-              <textarea
-                ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={t('typeMessage', language)}
-                disabled={thinkingState !== 'idle'}
-                rows={1}
-                className={clsx(
-                  "flex-1 px-4 py-3 rounded-xl resize-none text-sm",
-                  "bg-white/5 border border-white/10",
-                  "focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30",
-                  "placeholder-white/30 text-white",
-                  "disabled:opacity-50 transition-all"
-                )}
-                style={{ minHeight: '44px', maxHeight: '120px' }}
-              />
-              <button
-                type="submit"
-                disabled={thinkingState !== 'idle' || !input.trim()}
-                className={clsx(
-                  "p-3 rounded-xl flex-shrink-0",
-                  "bg-indigo-500 hover:bg-indigo-400",
-                  "text-white",
-                  "disabled:opacity-30 disabled:hover:bg-indigo-500",
-                  "transition-all"
-                )}
-              >
-                <Send className="w-4 h-4" />
-              </button>
+              <div className="flex-1 relative">
+                <textarea
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={t('typeMessage', language)}
+                  disabled={thinkingState !== 'idle'}
+                  rows={1}
+                  className={clsx(
+                    "w-full px-4 py-3 rounded-xl resize-none text-sm",
+                    "bg-white/5 border border-white/10",
+                    "focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20",
+                    "placeholder-white/30 text-white",
+                    "disabled:opacity-50 transition-all duration-300"
+                  )}
+                  style={{ minHeight: '44px', maxHeight: '120px' }}
+                />
+                {/* Shimmer effect on focus */}
+                <div className="absolute inset-0 rounded-xl pointer-events-none opacity-0 focus-within:opacity-100 shimmer" />
+              </div>
+              <SendButton disabled={thinkingState !== 'idle' || !input.trim()} />
             </div>
           </form>
         </div>

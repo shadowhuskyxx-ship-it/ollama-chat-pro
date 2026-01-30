@@ -14,15 +14,25 @@ export default function ThinkingIndicator({ state, language }: ThinkingIndicator
   const isThinking = state === 'thinking'
 
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
-      <span className="text-xs text-white/50">
+    <div className="flex items-center gap-3 px-4 py-2 rounded-full bg-white/5 border border-white/10 scale-in pulse-glow">
+      {/* Animated brain/wave icon */}
+      <div className="relative w-6 h-6">
+        <div className="absolute inset-0 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 animate-ping opacity-30" />
+        <div className="relative w-full h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center">
+          <span className="text-xs">{isThinking ? '🧠' : '✨'}</span>
+        </div>
+      </div>
+      
+      <span className="text-sm text-white/60">
         {isThinking ? t('thinking', language) : t('streaming', language)}
       </span>
-      <span className="flex gap-0.5">
-        <span className="w-1 h-1 bg-indigo-400 rounded-full animate-bounce" />
-        <span className="w-1 h-1 bg-indigo-400 rounded-full animate-bounce [animation-delay:0.1s]" />
-        <span className="w-1 h-1 bg-indigo-400 rounded-full animate-bounce [animation-delay:0.2s]" />
-      </span>
+      
+      {/* Animated dots */}
+      <div className="flex gap-1">
+        <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full typing-dot" />
+        <span className="w-1.5 h-1.5 bg-purple-400 rounded-full typing-dot" />
+        <span className="w-1.5 h-1.5 bg-pink-400 rounded-full typing-dot" />
+      </div>
     </div>
   )
 }
