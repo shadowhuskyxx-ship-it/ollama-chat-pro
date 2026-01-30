@@ -17,6 +17,19 @@ export function saveConversations(conversations: Conversation[]): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(conversations))
 }
 
+// Sync conversation to server
+async function syncToServer(conversation: Conversation): Promise<void> {
+  try {
+    await fetch('/api/conversations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(conversation),
+    })
+  } catch (e) {
+    console.error('Failed to sync conversation:', e)
+  }
+}
+
 export function getConversation(id: string): Conversation | undefined {
   const conversations = getConversations()
   return conversations.find(c => c.id === id)
@@ -25,7 +38,6 @@ export function getConversation(id: string): Conversation | undefined {
 export function createConversation(model: string, welcomeMessage?: string): Conversation {
   const messages: Message[] = []
   
-  // Add welcome message if provided
   if (welcomeMessage) {
     messages.push({
       id: generateId(),
@@ -46,6 +58,7 @@ export function createConversation(model: string, welcomeMessage?: string): Conv
   const conversations = getConversations()
   conversations.unshift(conversation)
   saveConversations(conversations)
+  syncToServer(conversation)
   return conversation
 }
 
@@ -59,6 +72,7 @@ export function updateConversation(id: string, updates: Partial<Conversation>): 
       updatedAt: Date.now() 
     }
     saveConversations(conversations)
+    syncToServer(conversations[index])
   }
 }
 
@@ -66,6 +80,12 @@ export function deleteConversation(id: string): void {
   const conversations = getConversations()
   const filtered = conversations.filter(c => c.id !== id)
   saveConversations(filtered)
+  // Sync delete to server
+  fetch('/api/conversations', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id }),
+  }).catch(console.error)
 }
 
 export function addMessage(conversationId: string, message: Message): void {
@@ -81,6 +101,7 @@ export function addMessage(conversationId: string, message: Message): void {
     }
     
     saveConversations(conversations)
+    syncToServer(conversations[index])
   }
 }
 
